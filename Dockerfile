@@ -29,8 +29,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy project
 COPY . .
 
-# Expose port
+# Expose port 5000 for Flask
 EXPOSE 5000
 
-# Run the app
+# Run the app (ensure Flask binds to 0.0.0.0:5000)
 CMD ["python", "app.py"] 
