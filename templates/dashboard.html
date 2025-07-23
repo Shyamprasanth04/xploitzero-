@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - XploitZero{% endblock %}
+{% block content %}
+<h1 class="mb-4 fade-in"><i class="fa-solid fa-chart-line text-primary me-2"></i>Command Center</h1>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card mb-3 shadow-sm fade-in text-center {% if findings.headers + findings.xss + findings.sqli + findings.open_redirect + findings.directory_listing + findings.admin_panels > 0 %}threat-pulse{% endif %}" style="background:#181818;border:2px solid #00ff88;box-shadow:0 0 24px 2px #00ff8855;">
+            <div class="card-body">
+                <i class="fa-solid fa-skull-crossbones fa-3x mb-2" style="color:#ff0055;text-shadow:0 0 12px #ff0055;"></i>
+                <h5 class="card-title" style="color:#ff0055;">Threats Found</h5>
+                <p class="display-4 fw-bold" style="color:#ff0055;" id="dashboardThreatCount"></p>
+                <script>
+                  document.addEventListener('DOMContentLoaded', function() {
+                    var count = {{ findings.headers + findings.xss + findings.sqli + findings.open_redirect + findings.directory_listing + findings.admin_panels }};
+                    var el = document.getElementById('dashboardThreatCount');
+                    var i = 0;
+                    if (count === 0) {
+                      el.innerHTML = '<span style="color:#00ff88;">0</span>';
+                    } else {
+                      var interval = setInterval(function() {
+                        el.textContent = i;
+                        if (i >= count) { clearInterval(interval); el.textContent = count; }
+                        i++;
+                      }, 60);
+                    }
+                  });
+                </script>
+                <div class="terminal-log mt-2" style="font-size:1.1rem;min-height:unset;padding:0.5rem 1rem;">{% if findings.headers + findings.xss + findings.sqli + findings.open_redirect + findings.directory_listing + findings.admin_panels == 0 %}<span style="color:#00ff88;">>> All clear. No threats detected.</span>{% else %}<span style="color:#ff0055;">>> Threats detected! Review scan results.</span>{% endif %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card mb-3 shadow-sm fade-in">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-bug text-danger me-2"></i>Findings by Type</h5>
+                <div class="row">
+                  <div class="col-6 col-md-4 mb-2">
+                    <div class="terminal-log text-center" style="padding:0.5rem 0.5rem;min-height:unset;">
+                      <i class="fa-solid fa-lock me-1"></i>Headers<br><span style="color:#ff0055;">{{ findings.headers }}</span>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-4 mb-2">
+                    <div class="terminal-log text-center" style="padding:0.5rem 0.5rem;min-height:unset;">
+                      <i class="fa-solid fa-code me-1"></i>XSS<br><span style="color:#ff0055;">{{ findings.xss }}</span>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-4 mb-2">
+                    <div class="terminal-log text-center" style="padding:0.5rem 0.5rem;min-height:unset;">
+                      <i class="fa-solid fa-database me-1"></i>SQLi<br><span style="color:#ff0055;">{{ findings.sqli }}</span>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-4 mb-2">
+                    <div class="terminal-log text-center" style="padding:0.5rem 0.5rem;min-height:unset;">
+                      <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>Redirect<br><span style="color:#ff0055;">{{ findings.open_redirect }}</span>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-4 mb-2">
+                    <div class="terminal-log text-center" style="padding:0.5rem 0.5rem;min-height:unset;">
+                      <i class="fa-solid fa-folder-open me-1"></i>DirList<br><span style="color:#ff0055;">{{ findings.directory_listing }}</span>
+                    </div>
+                  </div>
+                  <div class="col-6 col-md-4 mb-2">
+                    <div class="terminal-log text-center" style="padding:0.5rem 0.5rem;min-height:unset;">
+                      <i class="fa-solid fa-user-shield me-1"></i>Admin<br><span style="color:#ff0055;">{{ findings.admin_panels }}</span>
+                    </div>
+                  </div>
+                </div>
+                <canvas id="findingsChart" class="mt-3"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-3 shadow-sm fade-in">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-calendar-days text-info me-2"></i>Scan Activity Over Time</h5>
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Findings by type
+    const findingsData = {
+        labels: ['Headers', 'XSS', 'SQLi', 'Open Redirect', 'Directory Listing', 'Admin Panels'],
+        datasets: [{
+            label: 'Findings',
+            data: [
+                {{ findings.headers|int }},
+                {{ findings.xss|int }},
+                {{ findings.sqli|int }},
+                {{ findings.open_redirect|int }},
+                {{ findings.directory_listing|int }},
+                {{ findings.admin_panels|int }}
+            ],
+            backgroundColor: [
+                '#00ff88', '#ff0055', '#ff0055', '#ff0055', '#ff0055', '#ff0055'
+            ]
+        }]
+    };
+    new Chart(document.getElementById('findingsChart'), {
+        type: 'bar',
+        data: findingsData,
+        options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true }, x: { ticks: { color: '#f5f5f5' } } },
+            animation: { duration: 1200 }
+        }
+    });
+    // Scan activity over time
+    const scanDates = {{ scan_dates|tojson }};
+    var activityCounts = {};
+    scanDates.forEach(function(date) {
+        activityCounts[date] = (activityCounts[date] || 0) + 1;
+    });
+    var activityLabels = Object.keys(activityCounts);
+    var activityData = activityLabels.map(function(label) { return activityCounts[label]; });
+    new Chart(document.getElementById('activityChart'), {
+        type: 'line',
+        data: {
+            labels: activityLabels,
+            datasets: [{
+                label: 'Scans',
+                data: activityData,
+                fill: false,
+                borderColor: '#00ff88',
+                tension: 0.1
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true }, x: { ticks: { color: '#f5f5f5' } } },
+            animation: { duration: 1200 }
+        }
+    });
+</script>
+{% endblock %} 

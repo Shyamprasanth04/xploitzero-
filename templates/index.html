@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}Web Application Vulnerability Scanner{% endblock %}
+{% block content %}
+<div class="row justify-content-center mb-5">
+  <div class="col-lg-8 text-center">
+    <div class="py-4">
+      <i class="fa-solid fa-shield-halved fa-3x text-primary mb-3"></i>
+      <h1 class="display-5 fw-bold">Web Application Vulnerability Scanner</h1>
+      <p class="lead text-secondary">Scan your web applications for common vulnerabilities with a single click. Select which checks to run and get a professional, exportable report.</p>
+    </div>
+  </div>
+</div>
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+    <div class="card shadow-sm border-0 fade-in">
+      <div class="card-body p-4">
+        <h3 class="mb-4 text-center"><i class="fa-solid fa-magnifying-glass-chart text-primary me-2"></i>Start a New Scan</h3>
+        <form method="post" action="/scan" id="scanForm">
+          <div class="mb-3">
+            <label for="url" class="form-label">Target URL</label>
+            <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email <span class="text-secondary small">(optional, to receive scan results)</span></label>
+            <input type="email" class="form-control" id="email" name="email" placeholder="your@email.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Select Vulnerabilities to Scan:</label>
+            <div class="row g-2">
+              <div class="col-12 col-md-6">
+                <div class="form-check" data-bs-toggle="tooltip" data-bs-placement="top" title="Checks for missing or insecure HTTP headers.">
+                  <input class="form-check-input" type="checkbox" name="scan_headers" id="scan_headers" checked>
+                  <label class="form-check-label" for="scan_headers"><i class="fa-solid fa-lock"></i> HTTP Security Headers</label>
+                </div>
+                <div class="form-check" data-bs-toggle="tooltip" data-bs-placement="top" title="Detects reflected XSS vulnerabilities.">
+                  <input class="form-check-input" type="checkbox" name="scan_xss" id="scan_xss" checked>
+                  <label class="form-check-label" for="scan_xss"><i class="fa-solid fa-code"></i> Cross-Site Scripting (XSS)</label>
+                </div>
+                <div class="form-check" data-bs-toggle="tooltip" data-bs-placement="top" title="Tests for SQL injection vulnerabilities.">
+                  <input class="form-check-input" type="checkbox" name="scan_sqli" id="scan_sqli" checked>
+                  <label class="form-check-label" for="scan_sqli"><i class="fa-solid fa-database"></i> SQL Injection (SQLi)</label>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="form-check" data-bs-toggle="tooltip" data-bs-placement="top" title="Checks for open redirect vulnerabilities.">
+                  <input class="form-check-input" type="checkbox" name="scan_open_redirect" id="scan_open_redirect" checked>
+                  <label class="form-check-label" for="scan_open_redirect"><i class="fa-solid fa-arrow-right-arrow-left"></i> Open Redirect</label>
+                </div>
+                <div class="form-check" data-bs-toggle="tooltip" data-bs-placement="top" title="Detects exposed directory listings.">
+                  <input class="form-check-input" type="checkbox" name="scan_directory_listing" id="scan_directory_listing" checked>
+                  <label class="form-check-label" for="scan_directory_listing"><i class="fa-solid fa-folder-open"></i> Directory Listing</label>
+                </div>
+                <div class="form-check" data-bs-toggle="tooltip" data-bs-placement="top" title="Scans for accessible admin panels.">
+                  <input class="form-check-input" type="checkbox" name="scan_admin_panels" id="scan_admin_panels" checked>
+                  <label class="form-check-label" for="scan_admin_panels"><i class="fa-solid fa-user-shield"></i> Exposed Admin Panels</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg"><i class="fa-solid fa-bolt"></i> Start Scan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- Terminal-style scan log area -->
+    <div id="scanLog" class="terminal-log mt-4" style="display:none;"></div>
+  </div>
+</div>
+<!-- Scan Animation Overlay -->
+<div id="loadingOverlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;flex-direction:column;">
+  <div class="mb-3">
+    <!-- Animated SVG Shield -->
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" class="scan-shield">
+      <defs>
+        <linearGradient id="shieldGradient" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#0d6efd"/>
+          <stop offset="1" stop-color="#20c997"/>
+        </linearGradient>
+      </defs>
+      <path d="M40 10 L70 20 Q70 50 40 70 Q10 50 10 20 Z" fill="url(#shieldGradient)" stroke="#fff" stroke-width="2">
+        <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
+          values="M40 10 L70 20 Q70 50 40 70 Q10 50 10 20 Z;
+                  M40 12 L68 22 Q70 50 40 68 Q12 50 12 22 Z;
+                  M40 10 L70 20 Q70 50 40 70 Q10 50 10 20 Z"/>
+      </path>
+      <circle cx="40" cy="40" r="22" stroke="#fff" stroke-width="2" fill="none" stroke-dasharray="8 8">
+        <animateTransform attributeName="transform" type="rotate" from="0 40 40" to="360 40 40" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+  </div>
+  <div class="w-50 mx-auto mb-2">
+    <div class="progress" style="height: 1.2rem;">
+      <div id="scanProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%"></div>
+    </div>
+  </div>
+  <div class="mt-2 text-light fw-bold fs-5">Scanning in progress...</div>
+</div>
+<script>
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+  // Terminal scan log animation
+  const scanLogLines = [
+    '>> Initializing scanner... ',
+    '>> Connecting to target...',
+    '>> Checking HTTP headers...',
+    '>> Testing for XSS...',
+    '>> Testing for SQL Injection...',
+    '>> Checking for open redirects...',
+    '>> Scanning for directory listings...',
+    '>> Probing for admin panels...',
+    '>> Finalizing scan...'
+  ];
+  document.getElementById('scanForm').addEventListener('submit', function() {
+    var overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+    // Animate progress bar
+    var bar = document.getElementById('scanProgressBar');
+    bar.style.width = '0%';
+    let progress = 0;
+    let interval = setInterval(function() {
+      progress += Math.random() * 12 + 6;
+      if (progress >= 100) progress = 99;
+      bar.style.width = progress + '%';
+    }, 300);
+    // Terminal log animation with typewriter effect
+    var scanLog = document.getElementById('scanLog');
+    scanLog.innerHTML = '';
+    scanLog.style.display = 'block';
+    let i = 0;
+    function typeLine(line, cb) {
+      let j = 0;
+      function typeChar() {
+        if (j < line.length) {
+          scanLog.innerHTML += line[j] === ' ' ? '&nbsp;' : line[j];
+          scanLog.scrollTop = scanLog.scrollHeight;
+          j++;
+          setTimeout(typeChar, 18 + Math.random()*30);
+        } else {
+          scanLog.innerHTML += '<br>';
+          cb();
+        }
+      }
+      typeChar();
+    }
+    function showNextLine() {
+      if (i < scanLogLines.length) {
+        typeLine(scanLogLines[i], function() {
+          i++;
+          setTimeout(showNextLine, 180 + Math.random()*120);
+        });
+      } else {
+        typeLine('>> <span style="color:#ff0055;text-shadow:0 0 8px #ff0055;">Scan running... (see results soon)</span>', function(){});
+      }
+    }
+    showNextLine();
+    // Hide overlay on navigation (when results load)
+    window.addEventListener('pageshow', function() {
+      overlay.style.display = 'none';
+      clearInterval(interval);
+      bar.style.width = '0%';
+      scanLog.style.display = 'none';
+      scanLog.innerHTML = '';
+    });
+  });
+</script>
+{% endblock %} 

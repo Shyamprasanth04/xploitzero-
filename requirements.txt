@@ -1,0 +1,7 @@
+Flask
+Flask-Login
+Flask-Mail
+Flask-SQLAlchemy
+requests
+weasyprint
+Werkzeug 

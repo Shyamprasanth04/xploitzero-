@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}Scan Results - XploitZero{% endblock %}
+{% block content %}
+{% set vuln_count = 0 %}
+{% if results.headers and results.headers is mapping %}
+  {% for header in ['Content-Security-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'Strict-Transport-Security', 'X-XSS-Protection', 'Referrer-Policy', 'Permissions-Policy'] %}
+    {% if results.headers[header] is none %}{% set vuln_count = vuln_count + 1 %}{% endif %}
+  {% endfor %}
+{% endif %}
+{% if results.xss and results.xss.vulnerable %}{% set vuln_count = vuln_count + 1 %}{% endif %}
+{% if results.sqli and results.sqli.summary %}{% set vuln_count = vuln_count + 1 %}{% endif %}
+{% if results.open_redirect and results.open_redirect.vulnerable %}{% set vuln_count = vuln_count + 1 %}{% endif %}
+{% if results.directory_listing and results.directory_listing.summary %}{% set vuln_count = vuln_count + 1 %}{% endif %}
+{% if results.admin_panels and results.admin_panels.summary %}{% set vuln_count = vuln_count + 1 %}{% endif %}
+<div class="row justify-content-center mb-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0 mb-4 fade-in {% if vuln_count > 0 %}threat-pulse{% endif %}" style="background:#181818;border:2px solid #00ff88;box-shadow:0 0 24px 2px #00ff8855;">
+      <div class="card-body text-center">
+        <span class="summary-icon-wrapper" style="display:inline-block;">
+        {% if vuln_count == 0 %}
+          <svg id="safeCheck" width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
+            <circle cx="24" cy="24" r="22" stroke="#00ff88" stroke-width="3" fill="none"/>
+            <path d="M14 25l7 7 13-13" stroke="#00ff88" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <animate attributeName="stroke-dasharray" from="0,40" to="40,0" dur="0.7s" fill="freeze" />
+            </path>
+          </svg>
+        {% else %}
+          <i class="fa-solid fa-skull-crossbones fa-2x mb-2 summary-anim" style="color:#ff0055;text-shadow:0 0 12px #ff0055;transition:transform 0.3s;"></i>
+        {% endif %}
+        </span>
+        <h2 class="h4 fw-bold mb-2" style="color:#ff0055;">Threats Found</h2>
+        <div class="terminal-log mt-2" style="font-size:1.1rem;min-height:unset;padding:0.5rem 1rem;">
+          <span id="threatCount" class="display-4 fw-bold" style="color:#ff0055;"></span>
+          <span class="ms-2">threats detected</span>
+          <script>
+            // Animated threat count
+            document.addEventListener('DOMContentLoaded', function() {
+              var count = {{ vuln_count }};
+              var el = document.getElementById('threatCount');
+              var i = 0;
+              if (count === 0) {
+                el.innerHTML = '<span style="color:#00ff88;">0</span>';
+                el.nextElementSibling.innerHTML = 'No threats detected';
+              } else {
+                var interval = setInterval(function() {
+                  el.textContent = i;
+                  if (i >= count) { clearInterval(interval); el.textContent = count; }
+                  i++;
+                }, 60);
+              }
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+    <div class="mb-3 d-flex justify-content-end gap-2 fade-in">
+      <a href="{{ url_for('export_results', format='json') }}" class="btn btn-outline-primary"><i class="fa-solid fa-file-code"></i> JSON</a>
+      <a href="{{ url_for('export_results', format='csv') }}" class="btn btn-outline-secondary"><i class="fa-solid fa-file-csv"></i> CSV</a>
+      <a href="{{ url_for('export_results', format='pdf') }}" class="btn btn-outline-success"><i class="fa-solid fa-file-pdf"></i> PDF</a>
+    </div>
+    <!-- Terminal-style vulnerability cards -->
+    <div class="row g-3">
+      {% if results.headers %}
+      <div class="col-12">
+        <div class="terminal-log fade-in">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-lock me-2" style="color:#00ff88;"></i>
+            <span class="fw-bold" style="color:#00ff88;">HTTP Security Headers</span>
+          </div>
+          <div class="mb-2"><span class="text-secondary">Status Code:</span> <code>{{ results.headers.status_code if results.headers.status_code is defined else '-' }}</code></div>
+          <table class="table table-sm table-dark table-bordered mb-0">
+            <thead>
+              <tr>
+                <th>Header</th>
+                <th>Value</th>
+                <th>Present</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for header in ['Content-Security-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'Strict-Transport-Security', 'X-XSS-Protection', 'Referrer-Policy', 'Permissions-Policy'] %}
+              <tr>
+                <td><code>{{ header }}</code></td>
+                <td><code>{{ results.headers[header] if results.headers[header] else 'Not Set' }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ results.headers[header] if results.headers[header] else 'Not Set' }}')"></i></td>
+                <td>{% if results.headers[header] %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-danger">No</span>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% if results.xss %}
+      <div class="col-12">
+        <div class="terminal-log fade-in">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-code me-2" style="color:#00ff88;"></i>
+            <span class="fw-bold" style="color:#00ff88;">Cross-Site Scripting (XSS)</span>
+          </div>
+          <div class="mb-2"><span class="text-secondary">Tested URL:</span> <code>{{ results.xss.tested_url }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ results.xss.tested_url }}')"></i></div>
+          <div class="mb-2"><span class="text-secondary">Payload:</span> <code>{{ results.xss.payload }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ results.xss.payload }}')"></i></div>
+          <div><span class="text-secondary">Vulnerable:</span> {% if results.xss.vulnerable %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
+      {% if results.sqli %}
+      <div class="col-12">
+        <div class="terminal-log fade-in">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-database me-2" style="color:#00ff88;"></i>
+            <span class="fw-bold" style="color:#00ff88;">SQL Injection (SQLi)</span>
+          </div>
+          <div class="mb-2"><span class="text-secondary">Vulnerable:</span> {% if results.sqli.summary %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</div>
+          <table class="table table-sm table-dark table-bordered mb-0">
+            <thead>
+              <tr>
+                <th>Payload</th>
+                <th>Tested URL</th>
+                <th>Vulnerable</th>
+                <th>Error Signature</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for result in results.sqli.details %}
+              <tr>
+                <td><code>{{ result.payload }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ result.payload }}')"></i></td>
+                <td style="word-break: break-all;"><code>{{ result.tested_url }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ result.tested_url }}')"></i></td>
+                <td>{% if result.vulnerable %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</td>
+                <td><code>{{ result.error_signature if result.error_signature else (result.error if result.error else '-') }}</code></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% if results.open_redirect %}
+      <div class="col-12">
+        <div class="terminal-log fade-in">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-arrow-right-arrow-left me-2" style="color:#00ff88;"></i>
+            <span class="fw-bold" style="color:#00ff88;">Open Redirect</span>
+          </div>
+          <div class="mb-2"><span class="text-secondary">Tested URL:</span> <code>{{ results.open_redirect.tested_url }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ results.open_redirect.tested_url }}')"></i></div>
+          <div class="mb-2"><span class="text-secondary">Parameter:</span> <code>{{ results.open_redirect.param }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ results.open_redirect.param }}')"></i></div>
+          <div class="mb-2"><span class="text-secondary">Redirect Location:</span> <code>{{ results.open_redirect.location }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ results.open_redirect.location }}')"></i></div>
+          <div><span class="text-secondary">Vulnerable:</span> {% if results.open_redirect.vulnerable %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
+      {% if results.directory_listing %}
+      <div class="col-12">
+        <div class="terminal-log fade-in">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-folder-open me-2" style="color:#00ff88;"></i>
+            <span class="fw-bold" style="color:#00ff88;">Directory Listing</span>
+          </div>
+          <div class="mb-2"><span class="text-secondary">Vulnerable:</span> {% if results.directory_listing.summary %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</div>
+          <table class="table table-sm table-dark table-bordered mb-0">
+            <thead>
+              <tr>
+                <th>Tested URL</th>
+                <th>Directory Listing Exposed</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for finding in results.directory_listing.details %}
+              <tr>
+                <td style="word-break: break-all;"><code>{{ finding.url }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ finding.url }}')"></i></td>
+                <td>{% if finding.vulnerable %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</td>
+                <td><code>{{ finding.error if finding.error else '-' }}</code></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% if results.admin_panels %}
+      <div class="col-12">
+        <div class="terminal-log fade-in">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-user-shield me-2" style="color:#00ff88;"></i>
+            <span class="fw-bold" style="color:#00ff88;">Admin Panel Exposure</span>
+          </div>
+          <div class="mb-2"><span class="text-secondary">Accessible Admin Panel Found:</span> {% if results.admin_panels.summary %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</div>
+          <table class="table table-sm table-dark table-bordered mb-0">
+            <thead>
+              <tr>
+                <th>Tested URL</th>
+                <th>Accessible</th>
+                <th>Status Code</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for finding in results.admin_panels.details %}
+              <tr>
+                <td style="word-break: break-all;"><code>{{ finding.url }}</code> <i class="fa-regular fa-copy copy-icon" title="Copy" tabindex="0" aria-label="Copy to clipboard" onclick="navigator.clipboard.writeText('{{ finding.url }}')"></i></td>
+                <td>{% if finding.accessible %}<span class="badge bg-danger">Yes</span>{% else %}<span class="badge bg-success">No</span>{% endif %}</td>
+                <td><code>{{ finding.status_code if finding.status_code else '-' }}</code></td>
+                <td><code>{{ finding.error if finding.error else '-' }}</code></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="d-flex justify-content-between mt-4 fade-in">
+      <a href="/" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back</a>
+      <a href="/history" class="btn btn-outline-dark"><i class="fa-solid fa-clock-rotate-left"></i> Scan History</a>
+    </div>
+  </div>
+</div>
+{% endblock %} 

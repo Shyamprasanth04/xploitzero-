@@ -1,0 +1,188 @@
+<h5 class="card-title">Status Code: {{ results.headers.status_code if results.headers and results.headers.status_code is defined else '-' }}</h5>
+{% if results.headers %}
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Header</th>
+                <th>Value</th>
+                <th>Present</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for header in ['Content-Security-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'Strict-Transport-Security', 'X-XSS-Protection', 'Referrer-Policy', 'Permissions-Policy'] %}
+            <tr>
+                <td>{{ header }}</td>
+                <td>{{ results.headers[header] if results.headers[header] else 'Not Set' }}</td>
+                <td>{% if results.headers[header] %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-danger">No</span>{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<div class="mt-5">
+    <h2>XSS Vulnerability Scan</h2>
+    {% if results.xss and results.xss.error %}
+        <div class="alert alert-danger" role="alert">
+            Error: {{ results.xss.error }}
+        </div>
+    {% elif results.xss %}
+        <ul class="list-group">
+            <li class="list-group-item"><strong>Tested URL:</strong> {{ results.xss.tested_url }}</li>
+            <li class="list-group-item"><strong>Payload:</strong> {{ results.xss.payload }}</li>
+            <li class="list-group-item">
+                <strong>Vulnerable:</strong>
+                {% if results.xss.vulnerable %}
+                    <span class="badge bg-danger">Yes</span>
+                {% else %}
+                    <span class="badge bg-success">No</span>
+                {% endif %}
+            </li>
+        </ul>
+    {% endif %}
+</div>
+
+<div class="mt-5">
+    <h2>SQL Injection (SQLi) Scan</h2>
+    {% if not results.sqli or results.sqli.details is not defined %}
+        <div class="alert alert-danger" role="alert">
+            Error: Unable to perform SQLi scan.
+        </div>
+    {% else %}
+        <p>
+            <strong>Vulnerable:</strong>
+            {% if results.sqli.summary %}
+                <span class="badge bg-danger">Yes</span>
+            {% else %}
+                <span class="badge bg-success">No</span>
+            {% endif %}
+        </p>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Payload</th>
+                    <th>Tested URL</th>
+                    <th>Vulnerable</th>
+                    <th>Error Signature</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results.sqli.details %}
+                <tr>
+                    <td>{{ result.payload }}</td>
+                    <td style="word-break: break-all;">{{ result.tested_url }}</td>
+                    <td>
+                        {% if result.vulnerable %}
+                            <span class="badge bg-danger">Yes</span>
+                        {% else %}
+                            <span class="badge bg-success">No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ result.error_signature if result.error_signature else (result.error if result.error else '-') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+<div class="mt-5">
+    <h2>Open Redirect Scan</h2>
+    {% if results.open_redirect and results.open_redirect.error %}
+        <div class="alert alert-danger" role="alert">
+            Error: {{ results.open_redirect.error }}
+        </div>
+    {% elif results.open_redirect %}
+        <ul class="list-group">
+            <li class="list-group-item"><strong>Tested URL:</strong> {{ results.open_redirect.tested_url }}</li>
+            <li class="list-group-item"><strong>Parameter:</strong> {{ results.open_redirect.param }}</li>
+            <li class="list-group-item"><strong>Redirect Location:</strong> {{ results.open_redirect.location }}</li>
+            <li class="list-group-item">
+                <strong>Vulnerable:</strong>
+                {% if results.open_redirect.vulnerable %}
+                    <span class="badge bg-danger">Yes</span>
+                {% else %}
+                    <span class="badge bg-success">No</span>
+                {% endif %}
+            </li>
+        </ul>
+    {% endif %}
+</div>
+
+<div class="mt-5">
+    <h2>Directory Listing Scan</h2>
+    {% if results.directory_listing %}
+        <p>
+            <strong>Vulnerable:</strong>
+            {% if results.directory_listing.summary %}
+                <span class="badge bg-danger">Yes</span>
+            {% else %}
+                <span class="badge bg-success">No</span>
+            {% endif %}
+        </p>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Tested URL</th>
+                    <th>Directory Listing Exposed</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in results.directory_listing.details %}
+                <tr>
+                    <td style="word-break: break-all;">{{ finding.url }}</td>
+                    <td>
+                        {% if finding.vulnerable %}
+                            <span class="badge bg-danger">Yes</span>
+                        {% else %}
+                            <span class="badge bg-success">No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ finding.error if finding.error else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+<div class="mt-5">
+    <h2>Admin Panel Exposure Scan</h2>
+    {% if results.admin_panels %}
+        <p>
+            <strong>Accessible Admin Panel Found:</strong>
+            {% if results.admin_panels.summary %}
+                <span class="badge bg-danger">Yes</span>
+            {% else %}
+                <span class="badge bg-success">No</span>
+            {% endif %}
+        </p>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Tested URL</th>
+                    <th>Accessible</th>
+                    <th>Status Code</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in results.admin_panels.details %}
+                <tr>
+                    <td style="word-break: break-all;">{{ finding.url }}</td>
+                    <td>
+                        {% if finding.accessible %}
+                            <span class="badge bg-danger">Yes</span>
+                        {% else %}
+                            <span class="badge bg-success">No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ finding.status_code if finding.status_code else '-' }}</td>
+                    <td>{{ finding.error if finding.error else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div> 
